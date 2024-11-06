@@ -7,6 +7,7 @@ import glob
 import os.path
 from itertools import groupby
 
+import string
 
 #
 # Escriba la función load_input que recive como parámetro un folder y retorna
@@ -25,6 +26,12 @@ from itertools import groupby
 #
 def load_input(input_directory):
     """Funcion load_input"""
+    files = glob.glob(os.path.join(input_directory, '*'))
+    result = []
+    with fileinput.input(files=files) as f:
+        for line in f:
+            result.append((fileinput.filename(), line))
+    return result
 
 
 #
@@ -34,6 +41,10 @@ def load_input(input_directory):
 #
 def line_preprocessing(sequence):
     """Line Preprocessing"""
+    return [
+        (key, value.translate(str.maketrans('', '', string.punctuation)).lower().strip()) 
+        for key, value in sequence
+    ]
 
 
 #
@@ -50,6 +61,7 @@ def line_preprocessing(sequence):
 #
 def mapper(sequence):
     """Mapper"""
+    return [(word, 1) for _, value in sequence for word in value.split()]
 
 
 #
@@ -65,6 +77,7 @@ def mapper(sequence):
 #
 def shuffle_and_sort(sequence):
     """Shuffle and Sort"""
+    return sorted(sequence, key=lambda x: x[0])
 
 
 #
@@ -75,6 +88,10 @@ def shuffle_and_sort(sequence):
 #
 def reducer(sequence):
     """Reducer"""
+    result = {}
+    for key, value in sequence:
+        result[key] = result.get(key, 0) + value
+    return list(result.items())
 
 
 #
@@ -83,6 +100,11 @@ def reducer(sequence):
 #
 def create_ouptput_directory(output_directory):
     """Create Output Directory"""
+    if os.path.exists(output_directory):
+        for file in glob.glob(os.path.join(output_directory, '*')):
+            os.remove(file)
+        os.rmdir(output_directory)
+    os.makedirs(output_directory)
 
 
 #
@@ -95,6 +117,9 @@ def create_ouptput_directory(output_directory):
 #
 def save_output(output_directory, sequence):
     """Save Output"""
+    with open(os.path.join(output_directory, 'part-00000'), 'w', encoding='utf-8') as f:
+        for key, value in sequence:
+            f.write(f'{key}\t{value}\n')
 
 
 #
@@ -103,6 +128,8 @@ def save_output(output_directory, sequence):
 #
 def create_marker(output_directory):
     """Create Marker"""
+    with open(os.path.join(output_directory, '_SUCCESS'), 'w', encoding='utf-8') as f:
+        pass
 
 
 #
@@ -110,10 +137,18 @@ def create_marker(output_directory):
 #
 def run_job(input_directory, output_directory):
     """Job"""
+    lines = load_input(input_directory)
+    lines = line_preprocessing(lines)
+    lines = mapper(lines)
+    lines = shuffle_and_sort(lines)
+    lines = reducer(lines)
+    create_ouptput_directory(output_directory)
+    save_output(output_directory, lines)
+    create_marker(output_directory)
 
 
 if __name__ == "__main__":
     run_job(
-        "input",
-        "output",
+        "files/input",
+        "files/output",
     )
